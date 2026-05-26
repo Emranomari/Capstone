@@ -2,11 +2,12 @@ import { useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { usePatients } from '../context/PationtsContext'
 import { useNavigate } from 'react-router-dom'
+import EmptyState from '../components/EmptyState'
 
 export default function Dashboard() {
-  const { doctor }    = useAuth()
-  const { patients }  = usePatients()
-  const navigate      = useNavigate()
+  const { doctor }   = useAuth()
+  const { patients } = usePatients()
+  const navigate     = useNavigate()
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -41,7 +42,7 @@ export default function Dashboard() {
     {
       label: 'Model accuracy',
       value: '94%',
-      change: 'UNet v2.1',
+      change: 'Faster R-CNN',
       changeColor: 'text-sky-500',
       bg: 'bg-amber-50', iconColor: 'text-amber-500', icon: '◈',
     },
@@ -135,27 +136,37 @@ export default function Dashboard() {
 
         <div className="bg-white border border-gray-100 rounded-xl p-5">
           <p className="text-sm font-medium text-gray-700 mb-4">Result breakdown</p>
-          <div className="space-y-3">
-            {[
-              { label: 'Negative', pct: patients.length > 0 ? Math.round(patients.filter(p => p.result === 'Negative').length / patients.length * 100) : 0, color: 'bg-sky-400' },
-              { label: 'Positive', pct: patients.length > 0 ? Math.round(patients.filter(p => p.result === 'Positive').length / patients.length * 100) : 0, color: 'bg-red-400' },
-              { label: 'Pending',  pct: patients.length > 0 ? Math.round(patients.filter(p => p.result === 'Pending').length  / patients.length * 100) : 0, color: 'bg-amber-400' },
-            ].map(b => (
-              <div key={b.label}>
-                <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>{b.label}</span><span>{b.pct}%</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full">
-                  <div className={`h-2 ${b.color} rounded-full transition-all`}
-                    style={{ width: `${b.pct}%` }} />
-                </div>
+
+          {patients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-center">
+              <p className="text-3xl mb-2">◎</p>
+              <p className="text-xs text-gray-300">No data yet</p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {[
+                  { label: 'Negative', color: 'bg-sky-400',   pct: Math.round(patients.filter(p => p.result === 'Negative').length / patients.length * 100) },
+                  { label: 'Positive', color: 'bg-red-400',   pct: Math.round(patients.filter(p => p.result === 'Positive').length / patients.length * 100) },
+                  { label: 'Pending',  color: 'bg-amber-400', pct: Math.round(patients.filter(p => p.result === 'Pending').length  / patients.length * 100) },
+                ].map(b => (
+                  <div key={b.label}>
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>{b.label}</span><span>{b.pct}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full">
+                      <div className={`h-2 ${b.color} rounded-full transition-all`}
+                        style={{ width: `${b.pct}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-100 text-center">
-            <p className="text-2xl font-medium text-gray-800">{patients.length}</p>
-            <p className="text-xs text-gray-400">total patients</p>
-          </div>
+              <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+                <p className="text-2xl font-medium text-gray-800">{patients.length}</p>
+                <p className="text-xs text-gray-400">total patients</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -163,36 +174,40 @@ export default function Dashboard() {
       <div className="bg-white border border-gray-100 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-medium text-gray-700">Recent scans</p>
-          <button
-            onClick={() => navigate('/patients')}
-            className="text-xs text-sky-500 hover:text-sky-600"
-          >
-            View all →
-          </button>
+          {patients.length > 0 && (
+            <button
+              onClick={() => navigate('/patients')}
+              className="text-xs text-sky-500 hover:text-sky-600"
+            >
+              View all →
+            </button>
+          )}
         </div>
 
-        {recentPatients.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-gray-300">No scans yet</p>
-          </div>
+        {patients.length === 0 ? (
+          <EmptyState
+            icon="◎"
+            title="No scans yet"
+            description="Start by analyzing your first mammogram to see results here."
+            action="+ New Scan"
+            onAction={() => navigate('/scan')}
+          />
         ) : (
-          <div>
-            {recentPatients.map((p, i) => (
-              <div key={p.id}
-                className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center
-                                text-xs font-medium flex-shrink-0 ${p.avatarStyle}`}>
-                  {p.initials}
-                </div>
-                <p className="text-sm font-medium text-gray-700 flex-1">{p.name}</p>
-                <p className="text-xs text-gray-400">{p.age} yrs</p>
-                <p className="text-xs text-gray-400 w-5 text-center">{p.side}</p>
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${p.resultStyle}`}>
-                  {p.result}
-                </span>
+          recentPatients.map(p => (
+            <div key={p.id}
+              className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center
+                              text-xs font-medium flex-shrink-0 ${p.avatarStyle}`}>
+                {p.initials}
               </div>
-            ))}
-          </div>
+              <p className="text-sm font-medium text-gray-700 flex-1">{p.name}</p>
+              <p className="text-xs text-gray-400">{p.age} yrs</p>
+              <p className="text-xs text-gray-400 w-5 text-center">{p.side}</p>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${p.resultStyle}`}>
+                {p.result}
+              </span>
+            </div>
+          ))
         )}
       </div>
 
